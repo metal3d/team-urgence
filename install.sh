@@ -16,7 +16,7 @@ if [ $(id -u) != "0" ]; then
 fi
 
 apt update
-apt install wget git snapd ssl-cert debconf-utils -y
+apt install wget snapd ssl-cert debconf-utils -y
 
 snap install rocketchat-server
 snap set rocketchat-server port=4443
@@ -53,7 +53,7 @@ cat 1> /etc/nginx/sites-available/jitsi.conf <<EOF
 server {
     listen 80;
     server_name jitsi.${IP}.xip.io;
-    return 301 https://$host$request_uri;
+    return 301 https://\$host\$request_uri;
 }
 
 server {
@@ -68,5 +68,6 @@ server {
 }
 EOF
 
+ln -sf /etc/nginx/sites-available/jitsi.conf /etc/nginx/sites-enabled/jitsi.conf
 nginx -s reload
 
