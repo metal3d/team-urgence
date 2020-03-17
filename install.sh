@@ -47,12 +47,12 @@ echo "jitsi-meet-web-config	jitsi-meet/jvb-serve	boolean	false" | debconf-set-se
 echo "jitsi-meet-web-config	jitsi-meet/cert-path-key	string" | debconf-set-selections
 echo "jitsi-meet-prosody	jitsi-meet-prosody/jvb-hostname	string	meet.${IP}.xip.io" | debconf-set-selections
 
-apt -y install jitsi-meet
+apt install jitsi-meet
 
-cat 1> /etc/nginx/sites-available/jitsi.conf <<EOF
+cat 1> /etc/nginx/sites-available/rocket-chat.conf <<EOF
 server {
     listen 80;
-    server_name jitsi.${IP}.xip.io;
+    server_name chat.${IP}.xip.io;
     return 301 https://\$host\$request_uri;
 }
 
@@ -68,6 +68,6 @@ server {
 }
 EOF
 
-ln -sf /etc/nginx/sites-available/jitsi.conf /etc/nginx/sites-enabled/jitsi.conf
+ln -sf /etc/nginx/sites-available/rocket-chat.conf /etc/nginx/sites-enabled/rocket-chat.conf
 nginx -s reload
 
