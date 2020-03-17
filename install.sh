@@ -18,10 +18,6 @@ fi
 apt update
 apt install wget snapd ssl-cert debconf-utils -y
 
-snap install rocketchat-server
-snap set rocketchat-server port=4443
-systemctl restart snap.rocketchat-server.rocketchat-server.service
-
 wget -qO - https://download.jitsi.org/jitsi-key.gpg.key | sudo apt-key add -
 sh -c "echo 'deb https://download.jitsi.org stable/' > /etc/apt/sources.list.d/jitsi-stable.list"
 apt update
@@ -49,6 +45,13 @@ echo "jitsi-meet-prosody	jitsi-meet-prosody/jvb-hostname	string	meet.${IP}.xip.i
 
 apt install jitsi-meet
 
+
+snap install rocketchat-server
+snap set rocketchat-server port=4443
+systemctl restart snap.rocketchat-server.rocketchat-server.service
+ps ax | grep jitsi | cut -f2 -d" " | xargs kill
+systemctl restart snap.rocketchat-server.rocketchat-server.service
+
 cat 1> /etc/nginx/sites-available/rocket-chat.conf <<EOF
 server {
     listen 80;
@@ -57,7 +60,7 @@ server {
 }
 
 server {
-    server_name jitsi.${IP}.xip.io;
+    server_name chat.${IP}.xip.io;
     listen 443 ssl;
     ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;
     ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
