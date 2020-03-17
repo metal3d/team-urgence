@@ -18,7 +18,6 @@ fi
 apt update
 apt install wget git snapd ssl-cert debconf-utils -y
 
-snap set rocketchat-server port=4443
 snap install rocketchat-server
 snap set rocketchat-server port=4443
 systemctl restart snap.rocketchat-server.rocketchat-server.service
