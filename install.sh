@@ -16,13 +16,37 @@ if [ $(id -u) != "0" ]; then
 fi
 
 apt update
-apt install wget git snapd ssl-cert -y
+apt install wget git snapd ssl-cert debconf-utils -y
 
+snap set rocketchat-server port=4443
 snap install rocketchat-server
+snap set rocketchat-server port=4443
+systemctl restart snap.rocketchat-server.rocketchat-server.service
 
 wget -qO - https://download.jitsi.org/jitsi-key.gpg.key | sudo apt-key add -
 sh -c "echo 'deb https://download.jitsi.org stable/' > /etc/apt/sources.list.d/jitsi-stable.list"
 apt update
+
+secret=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
+authpass=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
+jvbsecret=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
+vidsecret=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
+
+echo "jitsi-meet-prosody	jicofo/jicofosecret	password	${secret}" | debconf-set-selections
+echo "jitsi-meet-prosody	jicofo/jicofo-authpassword	password	${authpass}" | debconf-set-selections
+echo "jitsi-meet-prosody	jitsi-videobridge/jvbsecret	password	${jvbsecret}" | debconf-set-selections
+echo "jitsi-videobridge	jitsi-videobridge/jvbsecret	password	${vidsecret}" | debconf-set-selections
+echo "jitsi-meet-web-config	jitsi-meet/jvb-hostname	string	meet.${IP}.xip.io" | debconf-set-selections
+echo "jitsi-meet-web-config	jitsi-meet/cert-path-crt	string" | debconf-set-selections
+echo "jitsi-meet-web-config	jitsi-meet/cert-choice	select	Generate a new self-signed certificate (You will later get a chance to obtain a Let's encrypt certificate)" | debconf-set-selections
+echo "jitsi-meet-prosody	jicofo/jicofo-authuser	string	focus" | debconf-set-selections
+echo "jicofo	jitsi-videobridge/jvb-hostname	string	meet.${IP}.xip.io" | debconf-set-selections
+echo "jitsi-meet-prosody	jitsi-videobridge/jvb-hostname	string	meet.${IP}.xip.io" | debconf-set-selections
+echo "jitsi-meet-web-config	jitsi-videobridge/jvb-hostname	string	meet.${IP}.xip.io" | debconf-set-selections
+echo "jitsi-videobridge	jitsi-videobridge/jvb-hostname	string	meet.${IP}.xip.io" | debconf-set-selections
+echo "jitsi-meet-web-config	jitsi-meet/jvb-serve	boolean	false" | debconf-set-selections
+echo "jitsi-meet-web-config	jitsi-meet/cert-path-key	string" | debconf-set-selections
+echo "jitsi-meet-prosody	jitsi-meet-prosody/jvb-hostname	string	meet.${IP}.xip.io" | debconf-set-selections
 
 apt -y install jitsi-meet
 
