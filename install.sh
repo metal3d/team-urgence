@@ -168,7 +168,7 @@ server {
 EOF
 
 sudo mv jitsi.conf /etc/nginx/sites-available/jitsi.conf
-sudo ln -s /etc/nginx/sites-available/jitsi.conf /etc/nginx/sites-enabled/jitsi.conf
+sudo ln -sf /etc/nginx/sites-available/jitsi.conf /etc/nginx/sites-enabled/jitsi.conf
 sudo nginx -s reload
 
 cat <<EOF
