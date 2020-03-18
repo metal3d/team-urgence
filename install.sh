@@ -1,6 +1,6 @@
 #!/bin/bash
 if [ "${USER}" != "team-urgence" ]; then
-    whichch sudo && prefix="sudo"
+    which sudo && prefix="sudo"
     [ ${USER} == "root" ] && prefix=""
 
     $prefix apt update
