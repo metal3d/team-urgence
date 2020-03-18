@@ -10,67 +10,76 @@ if [ -z $IP ]; then
 	exit 1
 fi
 
-if [ $(id -u) != "0" ]; then
-    echo "Restart with root user"
-    exec sudo bash $0 $IP
+cd $HOME
+sudo apt update
+sudo apt install ssl-cert git -y
+
+# install docker
+which docker
+if [ "$?" != 0 ]; then
+	wget -O- https://get.docker.com | bash -
+fi
+groups | grep docker || sudo usermod -aG docker ${USER}
+newgrp docker
+
+# install docker-compose
+which docker-compose
+if [ "$?" != 0 ]; then
+	wget https://github.com/docker/compose/releases/download/1.26.0-rc3/docker-compose-Linux-x86_64
+	sudo mv docker-compose-Linux-x86_64 /usr/local/bin/docker-compose
+	sudo chmod +x /usr/local/bin/docker-compose
 fi
 
-apt update
-apt install ssl-cert -y
+# install mattermost
+git clone https://github.com/mattermost/mattermost-docker.git
+cd mattermost-docker
+docker-compose build
+mkdir -pv ./volumes/app/mattermost/{data,logs,config,plugins,client-plugins}
+sudo chown -R 2000:2000 ./volumes/app/mattermost/
+cat 1> docker-compose.yaml <<EOF
+version: "3"
 
-wget -qO - https://download.jitsi.org/jitsi-key.gpg.key | sudo apt-key add -
-sh -c "echo 'deb https://download.jitsi.org stable/' > /etc/apt/sources.list.d/jitsi-stable.list"
-apt update
-apt install -y jitsi-meet
-
-## install rocket chat
-
-apt-get install -y dirmngr
-apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 9DA31620334BD75D9DCB49F368818C72E52529D4
-echo "deb http://repo.mongodb.org/apt/debian stretch/mongodb-org/4.0 main" | tee /etc/apt/sources.list.d/mongodb-org-4.0.list
-apt update
-apt-get install -y curl
-
-curl -sL https://deb.nodesource.com/setup_12.x | sudo bash -
-apt install -y build-essential mongodb-org nodejs graphicsmagick mongodb-org-server npm
-npm install -g inherits n
-n 12.14.0
-
-curl -L https://releases.rocket.chat/latest/download -o /tmp/rocket.chat.tgz
-tar -xzf /tmp/rocket.chat.tgz -C /tmp
-cd /tmp/bundle/programs/server
-npm install
-mv /tmp/bundle /opt/Rocket.Chat
-useradd -M rocketchat
-usermod -L rocketchat
-chown -R rocketchat:rocketchat /opt/Rocket.Chat
-
-# configure nginx for rocket chat
-
-cat << EOF | tee -a /lib/systemd/system/rocketchat.service
-[Unit]
-Description=The Rocket.Chat server
-After=network.target remote-fs.target nss-lookup.target nginx.target mongod.target
-[Service]
-ExecStart=/usr/local/bin/node /opt/Rocket.Chat/main.js
-StandardOutput=syslog
-StandardError=syslog
-SyslogIdentifier=rocketchat
-User=rocketchat
-Environment=MONGO_URL=mongodb://localhost:27017/rocketchat?replicaSet=rs01 MONGO_OPLOG_URL=mongodb://localhost:27017/local?replicaSet=rs01 ROOT_URL=http://localhost:3000/ PORT=3000
-[Install]
-WantedBy=multi-user.target
+services:
+  db:
+    build: db
+    read_only: true
+    restart: unless-stopped
+    volumes:
+      - ./volumes/db/var/lib/postgresql/data:/var/lib/postgresql/data
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - POSTGRES_USER=mmuser
+      - POSTGRES_PASSWORD=mmuser_password
+      - POSTGRES_DB=mattermost
+  app:
+    build:
+      context: app
+      args:
+        - edition=team
+    restart: unless-stopped
+    volumes:
+      - ./volumes/app/mattermost/config:/mattermost/config:rw
+      - ./volumes/app/mattermost/data:/mattermost/data:rw
+      - ./volumes/app/mattermost/logs:/mattermost/logs:rw
+      - ./volumes/app/mattermost/plugins:/mattermost/plugins:rw
+      - ./volumes/app/mattermost/client-plugins:/mattermost/client/plugins:rw
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - MM_USERNAME=mmuser
+      - MM_PASSWORD=mmuser_password
+      - MM_DBNAME=mattermost
+      - MM_SQLSETTINGS_DATASOURCE=postgres://mmuser:mmuser_password@db:5432/mattermost?sslmode=disable&connect_timeout=10
 EOF
 
-sed -i "s/^#  engine:/  engine: mmapv1/"  /etc/mongod.conf
-sed -i "s/^#replication:/replication:\n  replSetName: rs01/" /etc/mongod.conf
-systemctl enable mongod
-systemctl start mongod
+docker-compose up -d
 
-systemctl enable rocketchat
-systemctl start rocketchat
+cat 1> mattermost.conf <<EOF
+map \$http_x_forwarded_proto \$proxy_x_forwarded_proto {
+  default \$http_x_forwarded_proto;
+  ''       \$scheme;
+}
 
-cat 1> /etc/nginx/sites-available/rocket-chat.conf <<EOF
+
 server {
     listen 80;
     server_name chat.${IP}.xip.io;
@@ -83,12 +92,84 @@ server {
     ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;
     ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
 
+    location ~ /api/v[0-9]+/(users/)?websocket$ {
+        proxy_set_header Upgrade  \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        client_max_body_size 50M;
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$proxy_x_forwarded_proto;
+        proxy_set_header X-Frame-Options SAMEORIGIN;
+        proxy_buffers 256 16k;
+        proxy_buffer_size 16k;
+        proxy_read_timeout 600s;
+        proxy_pass http://127.0.0.1:8000;
+    }
+
     location / {
-        proxy_pass http://127.0.0.1:3000;
+        gzip on;
+        client_max_body_size 50M;
+        proxy_set_header Connection "";
+        proxy_set_header Host \$http_host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$proxy_x_forwarded_proto;
+        proxy_set_header X-Frame-Options SAMEORIGIN;
+        proxy_buffers 256 16k;
+        proxy_buffer_size 16k;
+        proxy_read_timeout 600s;
+	proxy_pass http://127.0.0.1:8000;
     }
 }
 EOF
+sudo mv mattermost.conf /etc/nginx/sites-available/mattermost.conf
+sudo ln -sf /etc/nginx/sites-available/mattermost.conf /etc/nginx/sites-enabled/mattermost.conf
+sudo nginx -s reload
 
-ln -sf /etc/nginx/sites-available/rocket-chat.conf /etc/nginx/sites-enabled/rocket-chat.conf
-nginx -s reload
 
+cd $HOME
+# now install rocketchat
+echo "127.0.0.1 chat.${IP}.xip.io" | sudo tee -a /etc/hosts
+git clone https://github.com/jitsi/docker-jitsi-meet && cd docker-jitsi-meet
+cp .env.example .env
+sed -i 's/#DISABLE_HTTPS=1/DISABLE_HTTPS=1/' .env
+sed -i 's,#PUBLIC_URL="https://meet.example.com",#PUBLIC_URL="https://meet.'${IP}'.xip.io",' .env
+sed -i 's/HTTP_PORT=8000/HTTP_PORT=8080/' .env
+
+mkdir -p ~/.jitsi-meet-cfg/{web/letsencrypt,transcripts,prosody,jicofo,jvb}
+docker-compose up -d
+
+cat 1> jitsi.conf <<EOF
+server {
+    listen 80;
+    server_name meet.${IP}.xip.io;
+    return 301 https://\$host\$request_uri;
+}
+
+server {
+    server_name meet.${IP}.xip.io;
+    listen 443 ssl;
+    ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;
+    ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+	proxy_set_header Host \$http_host;
+	proxy_set_header X-Real-IP \$remote_addr;
+	proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+	proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+}
+EOF
+
+sudo mv jitsi.conf /etc/nginx/sites-available/jitsi.conf
+sudo ln -s /etc/nginx/sites-available/jitsi.conf /etc/nginx/sites-enabled/jitsi.conf
+sudo nginx -s reload
+
+cat 1> <<EOF
+You can now visit:
+- https://meet.${IP}.xip.io to use meet jitsi for video conferences
+- https://chat.${IP}.xip.io to use mattermost and configure your team chat
+EOF
