@@ -28,15 +28,18 @@ apt install -y jitsi-meet
 apt-get install -y dirmngr
 apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 9DA31620334BD75D9DCB49F368818C72E52529D4
 echo "deb http://repo.mongodb.org/apt/debian stretch/mongodb-org/4.0 main" | tee /etc/apt/sources.list.d/mongodb-org-4.0.list
-sudo apt update
-sudo apt-get install -y curl
+apt update
+apt-get install -y curl
+
 curl -sL https://deb.nodesource.com/setup_12.x | sudo bash -
-apt install -y build-essential mongodb-org nodejs graphicsmagick
+apt install -y build-essential mongodb-org nodejs graphicsmagick mongodb-org-server npm
 npm install -g inherits n
 n 12.14.0
+
 curl -L https://releases.rocket.chat/latest/download -o /tmp/rocket.chat.tgz
 tar -xzf /tmp/rocket.chat.tgz -C /tmp
-cd /tmp/bundle/programs/server && npm install
+cd /tmp/bundle/programs/server
+npm install
 mv /tmp/bundle /opt/Rocket.Chat
 useradd -M rocketchat
 usermod -L rocketchat
