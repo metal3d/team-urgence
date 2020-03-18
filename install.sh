@@ -11,7 +11,7 @@ if [ "${USER}" != "team-urgence" ]; then
     # with a strong password
     $prefix passwd team-urgence
 
-    exec sudo -u team-user bash -c "export IP=${IP}; wget -qO- https://bit.ly/team-urgence | bash"
+    exec sudo -u team-urgence bash -c "export IP=${IP}; wget -qO- https://bit.ly/team-urgence | bash"
 fi
 
 if [ -n "$1" ]; then
