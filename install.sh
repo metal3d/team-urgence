@@ -1,15 +1,18 @@
 #!/bin/bash
-
 if [ "${USER}" != "team-urgence" ]; then
-    prefix="sudo"
+    whichch sudo && prefix="sudo"
     [ ${USER} == "root" ] && prefix=""
+
     $prefix apt update
     $prefix apt install sudo
-    $prefix useradd -M team-urgence
+    $prefix useradd -m -s /bin/bash team-urgence
     $prefix usermod -aG sudo team-urgence
-    exec sudo -u team-urgence -c "wget -qO- https://bit.ly/team-urgence | bash"
-fi
+    # and create a password for that user:
+    # with a strong password
+    $prefix passwd team-urgence
 
+    exec sudo -u team-user bash -c "export IP=${IP}; wget -qO- https://bit.ly/team-urgence | bash"
+fi
 
 if [ -n "$1" ]; then
 	IP=$1
@@ -183,6 +186,7 @@ EOF
 sudo mv jitsi.conf /etc/nginx/sites-available/jitsi.conf
 sudo ln -sf /etc/nginx/sites-available/jitsi.conf /etc/nginx/sites-enabled/jitsi.conf
 sudo nginx -s reload
+sudo gpasswd -d team-urgence sudo
 
 cat <<EOF
 You can now visit:
