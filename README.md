@@ -1,5 +1,5 @@
 # team-urgence
-Team urgence - temporary install rocket-chat and meet jitsi
+Team urgence - temporary install mattermost and meet jitsi.
 
 The usage is pretty simple.
 
