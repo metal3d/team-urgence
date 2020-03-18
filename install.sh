@@ -36,7 +36,7 @@ cd mattermost-docker
 docker-compose build
 mkdir -pv ./volumes/app/mattermost/{data,logs,config,plugins,client-plugins}
 sudo chown -R 2000:2000 ./volumes/app/mattermost/
-cat 1> docker-compose.yaml <<EOF
+cat 1> docker-compose.yml <<EOF
 version: "3"
 
 services:
@@ -57,6 +57,8 @@ services:
       args:
         - edition=team
     restart: unless-stopped
+    ports:
+      - 8000:8000
     volumes:
       - ./volumes/app/mattermost/config:/mattermost/config:rw
       - ./volumes/app/mattermost/data:/mattermost/data:rw
@@ -133,7 +135,7 @@ cd $HOME
 echo "127.0.0.1 chat.${IP}.xip.io" | sudo tee -a /etc/hosts
 git clone https://github.com/jitsi/docker-jitsi-meet
 cd docker-jitsi-meet
-cp .env.example .env
+cp env.example .env
 sed -i 's/#DISABLE_HTTPS=1/DISABLE_HTTPS=1/' .env
 sed -i 's,#PUBLIC_URL="https://meet.example.com",#PUBLIC_URL="https://meet.'${IP}'.xip.io",' .env
 sed -i 's/HTTP_PORT=8000/HTTP_PORT=8080/' .env
@@ -169,7 +171,7 @@ sudo mv jitsi.conf /etc/nginx/sites-available/jitsi.conf
 sudo ln -s /etc/nginx/sites-available/jitsi.conf /etc/nginx/sites-enabled/jitsi.conf
 sudo nginx -s reload
 
-cat 1> <<EOF
+cat <<EOF
 You can now visit:
 - https://meet.${IP}.xip.io to use meet jitsi for video conferences
 - https://chat.${IP}.xip.io to use mattermost and configure your team chat
