@@ -13,6 +13,8 @@ fi
 cd $HOME
 sudo apt update
 sudo apt install ssl-cert git nginx -y
+sudo systemctl enable nginx
+sudo systemctl start nginx
 
 # install docker
 which docker
