@@ -12,7 +12,7 @@ fi
 
 cd $HOME
 sudo apt update
-sudo apt install ssl-cert git -y
+sudo apt install ssl-cert git nginx -y
 
 # install docker
 which docker
@@ -131,7 +131,8 @@ sudo nginx -s reload
 cd $HOME
 # now install rocketchat
 echo "127.0.0.1 chat.${IP}.xip.io" | sudo tee -a /etc/hosts
-git clone https://github.com/jitsi/docker-jitsi-meet && cd docker-jitsi-meet
+git clone https://github.com/jitsi/docker-jitsi-meet
+cd docker-jitsi-meet
 cp .env.example .env
 sed -i 's/#DISABLE_HTTPS=1/DISABLE_HTTPS=1/' .env
 sed -i 's,#PUBLIC_URL="https://meet.example.com",#PUBLIC_URL="https://meet.'${IP}'.xip.io",' .env
