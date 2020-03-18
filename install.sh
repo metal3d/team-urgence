@@ -1,5 +1,16 @@
 #!/bin/bash
 
+if [ "${USER}" != "team-urgence" ]; then
+    prefix="sudo"
+    [ ${USER} == "root" ] && prefix=""
+    $prefix apt update
+    $prefix apt install sudo
+    $prefix useradd -M team-urgence
+    $prefix usermod -aG sudo team-urgence
+    exec sudo -u team-urgence -c "wget -qO- https://bit.ly/team-urgence | bash"
+fi
+
+
 if [ -n "$1" ]; then
 	IP=$1
 fi
