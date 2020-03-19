@@ -1,5 +1,5 @@
 # team-urgence
-Team urgence - temporary install mattermost and meet jitsi.
+Team urgence - temporary install rocket.chat and meet.jitsi.
 
 The usage is pretty simple.
 
@@ -14,11 +14,14 @@ wget -qO- http://bit.ly/team-urgence > team-urgence.sh && bash team-urgence.sh
 The script will install nginx, docker, and docker-compose if there are not already there.
 Then it will create a "team-urgence" user that will be in docker group.
 
-Then it will pull mattermost and meet jitsi repository in team-urgence home directory.
+Then it will pull rocket.chat and meet.jitsi repository in team-urgence home directory.
 
 It will configure both tools and start them.
 
 Finally, it will create 2 nginx configuration to be able to contact:
 - https://meet.YOUR_IP.xip.io to make visio conference (like Google meet)
 - https://chat.YOUR_IP.xip.io to have a team chat system (like Slack or Microsoft Team)
+
+Note that you'll need to create your administator account on rocket.chat instance, and potentially change visio conference settings
+if you want to use the one you've installed.
 
