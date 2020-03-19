@@ -1,4 +1,60 @@
 #!/bin/bash
+_PUBLICIP=$(curl -s http://whatismyip.akamai.com/)
+_PRIVATEIP=$(ip r get 1 | awk 'match($0, "src ([0-9]+.[0-9]+.[0-9].[0-9].)", a){print a[1]}')
+
+
+echo -e "\E[031mPLEASE, NOTE THAT IMPORTANT INFORMATION\E[0m"
+cat <<EOF
+This script is a simple automation to install meet.jit.si and mattermost
+on a server in urgence mode. That means that:
+- you will use the domain name "xip.io" (e.g. meet.your.ip.address.xip.xio)
+- certificates are not validate, so the users will need to accept default certificate
+
+It will install docker and docker-compose if they are not already installed.
+It will write configuration for nginx in /etc/nginx/sites-available/
+It will create a user named team-urgence that will be in "docker" group
+to launch mattermost and meet.jit.si
+
+I'm not responsible on you server and how you use the script !
+
+In the next futre, the author of that easy script will provide you a new script that will
+help you to change you domain name and use let's encrypt to have a valid certificate.
+
+Keep informed on https://github.com/metal3d/team-urgence
+
+Enjoy !
+EOF
+
+echo "Choose how to connect your services:"
+echo "1 - With private IP, only users in you local network via xxx.${_PRIVATEIP}.xip.io"
+echo "2 - With public IP, users can see your services on internet via xxx.${_PUBLICIP}.xip.io"
+
+RESP="-"
+while [ "$RESP" != '1' ] && [ "$RESP" != '2' ]; do
+    echo -n "Choose 1 or 2: "
+    read -a RESP
+done
+
+case $RESP in
+    1)
+        IP=${_PRIVATEIP}
+        ;;
+    2)
+        IP=${_PUBLICIP}
+        ;;
+esac
+
+echo "After installation, you will be able to connect:"
+echo "https://meet.${IP}.xip.io to make visioconference"
+echo "http://chat.${IP}.xip.io to chat with team, exchange files..."
+for i in in {1..10}; do
+    printf "\rYou have 10s to cancel by pressing CTRL+C: %1d " "$((10-i))"
+    sleep 1
+done
+echo
+
+
+exit
 if [ "${USER}" != "team-urgence" ]; then
     which sudo && prefix="sudo"
     [ ${USER} == "root" ] && prefix=""
@@ -12,16 +68,6 @@ if [ "${USER}" != "team-urgence" ]; then
     $prefix passwd team-urgence
 
     exec sudo -u team-urgence bash -c "export IP=${IP}; wget -qO- https://bit.ly/team-urgence | bash"
-fi
-
-if [ -n "$1" ]; then
-	IP=$1
-fi
-
-if [ -z $IP ]; then
-	echo "You must set IP environment variable"
-	echo "e.g. export IP=1.2.3.4"
-	exit 1
 fi
 
 cd $HOME
@@ -148,7 +194,7 @@ sudo nginx -s reload
 
 cd $HOME
 # now install rocketchat
-echo "127.0.0.1 chat.${IP}.xip.io" | sudo tee -a /etc/hosts
+grep "chat.${IP}.xip.io" /etc/hosts || echo "127.0.0.1 chat.${IP}.xip.io" | sudo tee -a /etc/hosts
 git clone https://github.com/jitsi/docker-jitsi-meet
 cd docker-jitsi-meet
 cp env.example .env
