@@ -69,14 +69,14 @@ IP=$(echo $IP)
 
 echo "After installation, you will be able to connect:"
 echo "https://meet.${IP}.xip.io to make visioconference"
-echo "http://chat.${IP}.xip.io to chat with team, exchange files..."
+echo "https://chat.${IP}.xip.io to chat with team, exchange files..."
 for i in in {1..10}; do
     printf "\rYou've got 10s to cancel by pressing CTRL+C: %1d " "$((10-i))"
     sleep 1
 done
 echo
 
-grep "team-urgence" /etc/password >/dev/null
+grep "team-urgence" /etc/passwd >/dev/null
 if [ "$?" != "0" ]; then
     echo "===> Create a team-urgence user"
     $prefix apt update
@@ -105,67 +105,24 @@ $prefix usermod -aG docker team-urgence
 # install docker-compose
 which docker-compose >/dev/null
 if [ "$?" != 0 ]; then
-	$prefix wget https://github.com/docker/compose/releases/download/1.26.0-rc3/docker-compose-Linux-x86_64 -O /usr/local/bin/docker-compose
-	$prefix chmod +x /usr/local/bin/docker-compose
+	#$prefix wget https://github.com/docker/compose/releases/download/1.26.0-rc3/docker-compose-Linux-x86_64 -O /usr/local/bin/docker-compose
+	#$prefix chmod +x /usr/local/bin/docker-compose
+    $prefix apt install -y docker-compose
 fi
 
-# install mattermost
-git clone https://github.com/mattermost/mattermost-docker.git /tmp/mattermost-docker
-cd /tmp/mattermost-docker
-mkdir -pv ./volumes/app/mattermost/{data,logs,config,plugins,client-plugins}
-cat 1> docker-compose.yml <<EOF
-version: "3"
 
-services:
-  db:
-    build: db
-    read_only: true
-    restart: unless-stopped
-    volumes:
-      - ./volumes/db/var/lib/postgresql/data:/var/lib/postgresql/data
-      - /etc/localtime:/etc/localtime:ro
-    environment:
-      - POSTGRES_USER=mmuser
-      - POSTGRES_PASSWORD=mmuser_password
-      - POSTGRES_DB=mattermost
-  app:
-    build:
-      context: app
-      args:
-        - edition=team
-    restart: unless-stopped
-    ports:
-      - 8000:8000
-    volumes:
-      - ./volumes/app/mattermost/config:/mattermost/config:rw
-      - ./volumes/app/mattermost/data:/mattermost/data:rw
-      - ./volumes/app/mattermost/logs:/mattermost/logs:rw
-      - ./volumes/app/mattermost/plugins:/mattermost/plugins:rw
-      - ./volumes/app/mattermost/client-plugins:/mattermost/client/plugins:rw
-      - /etc/localtime:/etc/localtime:ro
-    environment:
-      - MM_USERNAME=mmuser
-      - MM_PASSWORD=mmuser_password
-      - MM_DBNAME=mattermost
-      - MM_SQLSETTINGS_DATASOURCE=postgres://mmuser:mmuser_password@db:5432/mattermost?sslmode=disable&connect_timeout=10
-EOF
+## Rocket chat
 
-cd
-$prefix mv /tmp/mattermost-docker /opt/mattermost-docker
-$prefix chown -R team-urgence /opt/mattermost-docker
-sudo -u team-urgence bach -c "cd /opt/mattermost-docker && docker-compose build"
-$prefix chown -R 2000:2000 /opt/mattermost-docker/volumes/app/mattermost/
-sudo -u team-urgence bash -c "cd /opt/mattermost-docker && docker-compose up -d"
+mkdir /tmp/docker-rocket-chat
+wget -L https://raw.githubusercontent.com/RocketChat/Rocket.Chat/develop/docker-compose.yml -O /tmp/docker-rocket-chat/docker-compose.yml
+cd /tmp/docker-rocket-chat
+sed -i 's,ROOT_URL=http://localhost:3000,ROOT_URL=https://chat.'${IP}'.xip.io,' docker-compose.yml
+$prefix mv /tmp/docker-rocket-chat /opt/docker-rocket-chat
+$prefix chown -R team-urgence /opt/docker-rocket-chat
 
+sudo -u team-urgence bash -c "cd /opt/docker-rocket-chat && docker-compose up -d"
 
-## configure nginx
-cat 1> /tmp/mattermost.conf <<EOF
-map \$http_x_forwarded_proto \$proxy_x_forwarded_proto {
-  default \$http_x_forwarded_proto;
-  ''       \$scheme;
-}
-
-
+cat 1> /tmp/rocket-chat.conf <<EOF
 server {
     listen 80;
     server_name chat.${IP}.xip.io;
@@ -178,41 +135,20 @@ server {
     ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;
     ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
 
-    location ~ /api/v[0-9]+/(users/)?websocket$ {
-        proxy_set_header Upgrade  \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        client_max_body_size 50M;
+    location / {
+        proxy_pass http://127.0.0.1:3000;
         proxy_set_header Host \$http_host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$proxy_x_forwarded_proto;
-        proxy_set_header X-Frame-Options SAMEORIGIN;
-        proxy_buffers 256 16k;
-        proxy_buffer_size 16k;
-        proxy_read_timeout 600s;
-        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
-    location / {
-        gzip on;
-        client_max_body_size 50M;
-        proxy_set_header Connection "";
-        proxy_set_header Host \$http_host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$proxy_x_forwarded_proto;
-        proxy_set_header X-Frame-Options SAMEORIGIN;
-        proxy_buffers 256 16k;
-        proxy_buffer_size 16k;
-        proxy_read_timeout 600s;
-        proxy_pass http://127.0.0.1:8000;
-    }
 }
 EOF
-$prefix mv /tmp/mattermost.conf /etc/nginx/sites-available/mattermost.conf
-$prefix ln -sf /etc/nginx/sites-available/mattermost.conf /etc/nginx/sites-enabled/mattermost.conf
-$prefix nginx -s reload
 
+$prefix mv /tmp/rocket-chat.conf /etc/nginx/sites-available/rocket-chat.conf
+$prefix ln -sf /etc/nginx/sites-available/rocket-chat.conf /etc/nginx/sites-enabled/rocket-chat.conf
+$prefix nginx -s reload
 
 ## Jitsi
 cd 
