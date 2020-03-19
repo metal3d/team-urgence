@@ -1,9 +1,20 @@
 #!/bin/bash
-_PUBLICIP=$(wget -qO- http://whatismyip.akamai.com/)
-_PRIVATEIP=$(ip r get 1 | grep -Po '(\d+.){4}' | tail -n1)
+if [ "${USER}" != "team-urgence" ]; then
+    which sudo >/dev/null && prefix="sudo"
+    
+    if [ "$USER" != "root" ]; then
+        groups | grep sudo >/dev/null
+        if [ "$?" != "0" ]; then
+            echo "You user isn't in sudo group"
+            echo "Please add that user in sudo group with an administator account"
+            echo "with the command: usermod -aG sudo $USER"
+            exit 1
+        fi
+    fi
 
-echo -e "\E[031mPLEASE, NOTE THAT IMPORTANT INFORMATION\E[0m"
-cat <<EOF
+    [ ${USER} == "root" ] && prefix=""
+    echo -e "\E[031mPLEASE, NOTE THAT IMPORTANT INFORMATION\E[0m"
+    cat <<EOF
 This script is a simple automation to install meet.jit.si and mattermost
 on a server in urgence mode. That means that:
 - you will use the domain name "xip.io" (e.g. meet.your.ip.address.xip.xio)
@@ -22,7 +33,28 @@ help you to change you domain name and use let's encrypt to have a valid certifi
 Keep informed on https://github.com/metal3d/team-urgence
 
 Enjoy !
+Press any key to continue, or CTRL+C to cancel...
 EOF
+
+    read
+
+    exit
+    $prefix apt update
+    $prefix apt install sudo
+    $prefix useradd -m -s /bin/bash team-urgence
+    $prefix usermod -aG sudo team-urgence
+    $prefix cp team-urgence.sh /home/team-urgence/team-urgence.sh
+    $prefix chown team-urgence /home/team-urgence/team-urgence.sh
+    # and create a password for that user:
+    # with a strong password
+    echo "Give a password for team-urgene user please:"
+    $prefix passwd team-urgence
+    exec sudo -u team-urgence bash -c "bash /home/team-urgence/team-urgence.sh"
+fi
+
+_PUBLICIP=$(wget -qO- http://whatismyip.akamai.com/)
+_PRIVATEIP=$(ip r get 1 | grep -Po '(\d+.){4}' | tail -n1)
+
 
 echo "Choose how to connect your services:"
 echo "1 - With private IP, only users in you local network via xxx.${_PRIVATEIP}.xip.io"
@@ -51,25 +83,6 @@ for i in in {1..10}; do
     sleep 1
 done
 echo
-
-# for tests
-[ "$TEST" == "true" ] && exit 0
-
-
-if [ "${USER}" != "team-urgence" ]; then
-    which sudo && prefix="sudo"
-    [ ${USER} == "root" ] && prefix=""
-
-    $prefix apt update
-    $prefix apt install sudo
-    $prefix useradd -m -s /bin/bash team-urgence
-    $prefix usermod -aG sudo team-urgence
-    # and create a password for that user:
-    # with a strong password
-    $prefix passwd team-urgence
-
-    exec sudo -u team-urgence bash -c "export IP=${IP}; wget -qO- https://bit.ly/team-urgence | bash"
-fi
 
 cd $HOME
 sudo apt update
