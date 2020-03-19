@@ -46,7 +46,7 @@ EOF
     $prefix chown team-urgence /home/team-urgence/team-urgence.sh
     # and create a password for that user:
     # with a strong password
-    echo "Give a password for team-urgene user please:"
+    echo "Give a password for team-urgence user please:"
     $prefix passwd team-urgence
     exec sudo -u team-urgence bash -c "bash /home/team-urgence/team-urgence.sh"
 fi
