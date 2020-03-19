@@ -38,7 +38,6 @@ EOF
 
     read
 
-    exit
     $prefix apt update
     $prefix apt install sudo
     $prefix useradd -m -s /bin/bash team-urgence
