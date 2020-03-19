@@ -8,7 +8,7 @@ The usage is pretty simple.
 
 Then:
 ```
-wget -qO- http://bit.ly/team-urgence | bash
+wget -qO- http://bit.ly/team-urgence > team-urgence.sh && bash team-urgence.sh
 ```
 
 The script will install nginx, docker, and docker-compose if there are not already there.
