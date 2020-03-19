@@ -16,7 +16,7 @@ fi
 
 echo -e "\E[031mPLEASE, NOTE THAT IMPORTANT INFORMATION\E[0m"
 cat <<EOF
-This script is a simple automation to install meet.jit.si and mattermost
+This script is a simple automation to install meet.jit.si and rocket.chat
 on a server in urgence mode. That means that:
 - you will use the domain name "xip.io" (e.g. meet.your.ip.address.xip.xio)
 - certificates are not validate, so the users will need to accept default certificate
@@ -25,8 +25,8 @@ It will install docker and docker-compose if they are not already installed.
 It will install nginx.
 It will write configuration for nginx in /etc/nginx/sites-available/
 It will create a user named team-urgence that will be in "docker" group
-to launch mattermost and meet.jit.si
-Create /opt/mattermost-docker and /opt/docker-jitsi-meet direcotries where
+to launch rocket.chat and meet.jit.si
+Create /opt/docker-rocket-chat and /opt/docker-jitsi-meet direcotries where
 resides configuration and docker-compose files.
 
 I'm not responsible on you server and how you use the script !
@@ -375,5 +375,5 @@ $prefix nginx -s reload
 cat <<EOF
 You can now visit:
 - https://meet.${IP}.xip.io to use meet jitsi for video conferences
-- https://chat.${IP}.xip.io to use mattermost and configure your team chat
+- https://chat.${IP}.xip.io to use rocket.chat and configure your team chat
 EOF
