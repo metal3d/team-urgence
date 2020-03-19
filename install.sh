@@ -52,8 +52,10 @@ for i in in {1..10}; do
 done
 echo
 
+# for tests
+[ "$TEST" == "true" ] && exit 0
 
-exit
+
 if [ "${USER}" != "team-urgence" ]; then
     which sudo && prefix="sudo"
     [ ${USER} == "root" ] && prefix=""
