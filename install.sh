@@ -1,7 +1,6 @@
 #!/bin/bash
-_PUBLICIP=$(curl -s http://whatismyip.akamai.com/)
-_PRIVATEIP=$(ip r get 1 | awk 'match($0, "src ([0-9]+.[0-9]+.[0-9].[0-9].)", a){print a[1]}')
-
+_PUBLICIP=$(wget -qO- http://whatismyip.akamai.com/)
+_PRIVATEIP=$(ip r get 1 | grep -Po '(\d+.){4}' | tail -n1)
 
 echo -e "\E[031mPLEASE, NOTE THAT IMPORTANT INFORMATION\E[0m"
 cat <<EOF
