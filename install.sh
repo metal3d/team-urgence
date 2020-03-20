@@ -44,6 +44,8 @@ read
 
 _PUBLICIP=$(wget -qO- http://whatismyip.akamai.com/)
 _PRIVATEIP=$(ip r get 1 | grep -Po '(\d+.){4}' | tail -n1)
+_PUBLICIP=$(echo $_PUBLICIP)
+_PRIVATEIP=$(echo $_PRIVATEIP)
 
 echo "Choose how to connect your services:"
 echo "1 - With private IP, only users in you local network via xxx.${_PRIVATEIP}.xip.io"
@@ -78,9 +80,11 @@ echo
 
 grep "team-urgence" /etc/passwd >/dev/null
 if [ "$?" != "0" ]; then
+    echo "===> Install sudo command if necessary"
+    $prefix apt update || exit 1
+    $prefix apt install sudo || exit 1
+
     echo "===> Create a team-urgence user"
-    $prefix apt update
-    $prefix apt install sudo
     $prefix useradd -m -s /bin/bash team-urgence
     # and create a password for that user:
     # with a strong password
@@ -105,9 +109,10 @@ $prefix usermod -aG docker team-urgence
 # install docker-compose
 which docker-compose >/dev/null
 if [ "$?" != 0 ]; then
-	#$prefix wget https://github.com/docker/compose/releases/download/1.26.0-rc3/docker-compose-Linux-x86_64 -O /usr/local/bin/docker-compose
-	#$prefix chmod +x /usr/local/bin/docker-compose
-    $prefix apt install -y docker-compose
+	$prefix wget https://github.com/docker/compose/releases/download/1.26.0-rc3/docker-compose-Linux-x86_64 -O /usr/local/bin/docker-compose
+	$prefix chmod +x /usr/local/bin/docker-compose
+    # Too long... and not up to date
+    # $prefix apt install -y docker-compose
 fi
 
 
@@ -151,8 +156,8 @@ $prefix ln -sf /etc/nginx/sites-available/rocket-chat.conf /etc/nginx/sites-enab
 $prefix nginx -s reload
 
 ## Jitsi
-cd 
-grep "chat.${IP}.xip.io" /etc/hosts || echo "127.0.0.1 chat.${IP}.xip.io" | sudo tee -a /etc/hosts
+
+cd
 
 # clone and configure
 git clone https://github.com/jitsi/docker-jitsi-meet /tmp/docker-jitsi-meet
@@ -368,8 +373,8 @@ server {
 EOF
 
 cd 
-$prefix mv /tmp/jitsi.conf /etc/nginx/sites-available/jitsi.conf
-$prefix ln -sf /etc/nginx/sites-available/jitsi.conf /etc/nginx/sites-enabled/jitsi.conf
+$prefix mv /tmp/jitsi.conf /etc/nginx/sites-available/jitsi-meet.conf
+$prefix ln -sf /etc/nginx/sites-available/jitsi-meet.conf /etc/nginx/sites-enabled/jitsi-meet.conf
 $prefix nginx -s reload
 
 cat <<EOF
