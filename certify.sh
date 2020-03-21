@@ -3,22 +3,42 @@ domain=$1
 prefix=""
 
 if [ $USER != 'root' ]; then
-	prefix="sudo"
-	groups | grep sudo
-	if [ "$?" != "0" ]; then
-		echo "Your user is not in sudo group, pleae use root user or a user that have sudo rights."
-		exit 1
-	fi
+    prefix="sudo"
+    groups | grep sudo
+    if [ "$?" != "0" ]; then
+        echo "Your user is not in sudo group, pleae use root user or a user that have sudo rights."
+        exit 1
+    fi
 fi
 
 if [ "$domain" == "" ]; then
-	echo "You need to sepcify a domain name."
-	echo "e.g. $0 mydomain.com" 
-	exit 1
+    echo "You need to sepcify a domain name."
+    echo "e.g. $0 mydomain.com"
+    exit 1
 fi
 
+
+cat <<EOF
+This script will help to certify meet.$domain and chat.$domain whit certbot.
+
+Be sure that you have configured DNS with that domain names to point on this server.
+
+Then, press any key to continue, or CTRL+C to cancel.
+EOF
+read
+echo
+
+echo "==> Backup configurationtion if needed"
+[ -f /etc/sites-available/rocket-chat.conf.xip ] || $prefix cp /etc/sites-available/rocket-chat.conf /etc/sites-available/rocket-chat.conf.xip
+[ -f /etc/sites-available/jitsi-meet.conf.xip ] || $prefix cp /etc/sites-available/jitsi-meet.conf /etc/sites-available/jitsi-meet.conf.xip
+
+
+
+echo "==> Installing certbot"
 $prefix apt install -y certbot python-certbot-nginx
 
+
+echo "==> Configure nginx"
 cat 1> /tmp/jitsi-meet.conf <<EOF
 server {
     server_name meet.$domain;
@@ -31,12 +51,10 @@ server {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
     }
-
 }
 EOF
 
 cat 1> /tmp/rocket-chat.conf <<EOF
-
 server {
     server_name chat.$domain;
     listen 80;
@@ -55,23 +73,26 @@ server {
 
         proxy_redirect off;
     }
-
 }
 EOF
 
-$prefix cp /tmp/jitsi-meet.conf /tmp/rocket-chat.conf /etc/nginx/sites-available/
+$prefix mv /tmp/jitsi-meet.conf /tmp/rocket-chat.conf /etc/nginx/sites-available/
 $prefix nginx -s reload
 
 echo "==> Reloading rocket.chat with new configuration."
 $prefix sed -i 's,ROOT_URL=.*,ROOT_URL=https://chat.'$domain',' /opt/docker-rocket-chat/docker-compose.yml
 sudo -u team-urgence bash -c "cd /opt/docker-rocket-chat && docker-compose restart rocketchat"
 
-echo "==> We will now try to certify your domain"
-echo "Please, check that http://meet.$domain and http://chat.$domain respond to port 80 before to continue."
-echo "If it's not the case, please hit CTRL+C now and try to launch this script again when the domain name is correctly set up."
-echo "Certbot will ask you for email, and wich domains to certify, please select meet.$domain and chat.$domain domains."
-echo "Then, ask for redirection from 80 to 443 (http to https)"
-echo "Ready ? Enter to continue or CTRL+C to cancel"
+cat <<EOF
+==> We will now try to certify your domain
+
+Please, check that http://meet.$domain and http://chat.$domain respond to port 80 before to continue.
+If it's not the case, please hit CTRL+C now and try to launch this script again when the domain name is correctly set up.
+Certbot will ask you for email, and wich domains to certify, please select meet.$domain and chat.$domain domains.
+Then, when certbot ask for redirection from 80 to 443 (http to https), say yes !
+Ready ? Enter to continue or CTRL+C to cancel
+EOF
+
 read
 echo
 
