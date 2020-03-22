@@ -1,7 +1,9 @@
 # team-urgence
 Team urgence - temporary install rocket.chat and meet.jitsi.
 
-**This script is made to work on a server or a virtual machine**
+**This script is made to work on a server or a virtual machine, standard AMD64 (x86_64) CPUs.**
+
+**ARM CPUs are not supported for the moment.**
 
 The usage is pretty simple.
 
